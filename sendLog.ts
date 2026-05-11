@@ -50,6 +50,50 @@ async function findLogFiles(): Promise<{
   return { outLog, errLog };
 }
 
+async function sendHelpMenu(msg: Api.Message) {
+  const helpText = `
+<b>📋 日志管理插件</b>
+
+━━━━━━━━━━━━━━━━━━
+
+<b>📋 功能卡片</b>
+
+<b>┌ 📤 发送日志文件</b>
+<code>│ .sendlog</code>
+<code>│</code>
+<code>│ 发送当前日志文件到目标</code>
+
+<b>├ 📌 设置发送目标</b>
+<code>│ .sendlog set &lt;目标&gt;</code>
+<code>│</code>
+<code>│ 支持：</code>
+<code>│ • me（默认）</code>
+<code>│ • 用户ID</code>
+<code>│ • @username</code>
+
+<b>├ 🗑️ 清理日志文件</b>
+<code>│ .sendlog clean</code>
+<code>│</code>
+<code>│ 删除本地日志缓存</code>
+
+<b>└ ⚙️ 使用示例</b>
+<pre>
+.sendlog set me
+.sendlog clean
+.sendlog
+</pre>
+
+━━━━━━━━━━━━━━━━━━
+
+<i>⚠️ 单个日志文件超过 50MB 将自动跳过处理</i>
+`;
+
+  await msg.edit({
+    text: helpText,
+    parse_mode: 'HTML'
+  });
+}
+
 const fn = async (msg: Api.Message) => {
   console.log("SendLog plugin triggered");
 
@@ -60,12 +104,7 @@ const fn = async (msg: Api.Message) => {
 
   // 处理 help 子命令
   if (subCommand === "help") {
-    const helpText = `<b>📋 日志管理插件</b>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📤 发送日志文件</b>\n<code>.sendlog</code>\n\n<b>🎯 设置发送目标</b>\n<code>.sendlog set &lt;目标&gt;</code>\n• <code>me</code> — 已保存消息 <i>(默认)</i>\n• <code>123456789</code> — 用户ID\n• <code>@username</code> — 用户名\n\n<b>🗑️ 清理日志文件</b>\n<code>.sendlog clean</code>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📌 示例</b>\n<pre>.sendlog set me\n.sendlog clean\n.sendlog</pre>\n\n<i>⚠️ 日志文件超过 50MB 将自动跳过</i>`;
-    
-    await msg.edit({ 
-      text: helpText, 
-      parse_mode: 'HTML' 
-    });
+    await sendHelpMenu(msg);
     return;
   }
 
@@ -233,7 +272,7 @@ const fn = async (msg: Api.Message) => {
 };
 
 class SendLogPlugin extends Plugin {
-  description: string = `<b>📋 日志管理插件</b>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📤 发送日志文件</b>\n<code>.sendlog</code>\n\n<b>🎯 设置发送目标</b>\n<code>.sendlog set &lt;目标&gt;</code>\n• <code>me</code> — 已保存消息 <i>(默认)</i>\n• <code>123456789</code> — 用户ID\n• <code>@username</code> — 用户名\n\n<b>🗑️ 清理日志文件</b>\n<code>.sendlog clean</code>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📌 示例</b>\n<pre>.sendlog set me\n.sendlog clean\n.sendlog</pre>\n\n<i>⚠️ 日志文件超过 50MB 将自动跳过</i>`;
+  description: string = `<b>📋 日志管理插件</b>\n\n━━━━━━━━━━━━━━━━━━\n\n<b>📋 功能卡片</b>\n\n<b>┌ 📤 发送日志文件</b>\n<code>│ .sendlog</code>\n<code>│</code>\n<code>│ 发送当前日志文件到目标</code>\n\n<b>├ 📌 设置发送目标</b>\n<code>│ .sendlog set &lt;目标&gt;</code>\n<code>│</code>\n<code>│ 支持：me（默认）、用户ID、@username</code>\n\n<b>├ 🗑️ 清理日志文件</b>\n<code>│ .sendlog clean</code>\n<code>│</code>\n<code>│ 删除本地日志缓存</code>\n\n<b>└ ⚙️ 使用示例</b>\n<pre>.sendlog set me\n.sendlog clean\n.sendlog</pre>\n\n━━━━━━━━━━━━━━━━━━\n\n<i>⚠️ 单个日志文件超过 50MB 将自动跳过处理</i>`;
 
   cmdHandlers: Record<string, (msg: Api.Message) => Promise<void>> = {
     sendlog: fn,
