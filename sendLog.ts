@@ -9,24 +9,19 @@ import { Api } from "teleproto";
 const prefixes = getPrefixes();
 const mainPrefix = prefixes[0];
 
-
 async function findLogFiles(): Promise<{
   outLog: string | null;
   errLog: string | null;
 }> {
   const possiblePaths = [
-    // PM2 默认路径
     path.join(os.homedir(), ".pm2/logs/telebox-out.log"),
     path.join(os.homedir(), ".pm2/logs/telebox-error.log"),
     path.join(os.homedir(), ".pm2/logs/telebox-err.log"),
-    // 项目本地路径
     path.join(process.cwd(), "logs/out.log"),
     path.join(process.cwd(), "logs/error.log"),
     path.join(process.cwd(), "logs/telebox.log"),
-    // 系统日志路径
     "/var/log/telebox/out.log",
     "/var/log/telebox/error.log",
-    // 相对路径
     "./logs/out.log",
     "./logs/error.log",
   ];
@@ -55,35 +50,35 @@ async function findLogFiles(): Promise<{
   return { outLog, errLog };
 }
 
-function htmlEscape(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 const fn = async (msg: Api.Message) => {
   console.log("SendLog plugin triggered");
 
   const parts = msg.message.trim().split(/\s+/).filter(Boolean);
   console.log("SendLog parts:", parts);
 
-  // 修复：正确提取子命令 parts[0]是命令本身(如.sendlog)，parts[1]才是子命令(如set/clean)
   const subCommand = parts[1];
+
+  // 处理 help 子命令
+  if (subCommand === "help") {
+    const helpText = `<b>📋 日志管理插件</b>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📤 发送日志文件</b>\n<code>.sendlog</code>\n\n<b>🎯 设置发送目标</b>\n<code>.sendlog set &lt;目标&gt;</code>\n• <code>me</code> — 已保存消息 <i>(默认)</i>\n• <code>123456789</code> — 用户ID\n• <code>@username</code> — 用户名\n\n<b>🗑️ 清理日志文件</b>\n<code>.sendlog clean</code>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📌 示例</b>\n<pre>.sendlog set me\n.sendlog clean\n.sendlog</pre>\n\n<i>⚠️ 日志文件超过 50MB 将自动跳过</i>`;
+    
+    await msg.edit({ 
+      text: helpText, 
+      parse_mode: 'HTML' 
+    });
+    return;
+  }
 
   // 处理 set 子命令：设置日志发送目标
   if (subCommand === "set") {
     const target = parts[2];
     if (!target) {
-      await msg.edit({ text: `用法: ${mainPrefix}sendlog set &lt;chatId|me&gt;` });
+      await msg.edit({ text: `用法: ${mainPrefix}sendlog set <chatId|me|@username>` });
       return;
     }
     const db = new SendLogDB();
     db.setTarget(target);
     db.close();
-    // 不暴露具体目标
     await msg.edit({ text: `✅ 已设置日志发送目标` });
     return;
   }
@@ -144,11 +139,15 @@ const fn = async (msg: Api.Message) => {
   // 默认行为：无子命令时发送日志文件
   let target: string | number = "me";
   const db = new SendLogDB();
-  target = db.getTarget();
+  const savedTarget = db.getTarget();
   db.close();
+  
+  // 验证目标有效性
+  if (savedTarget) {
+    target = savedTarget;
+  }
 
   try {
-    // 初始响应不显示目标
     await msg.edit({ text: `🔍 正在搜索日志文件...` });
 
     const { outLog, errLog } = await findLogFiles();
@@ -164,7 +163,6 @@ const fn = async (msg: Api.Message) => {
     let sentCount = 0;
     const results: string[] = [];
 
-    // 发送输出日志
     if (outLog) {
       try {
         const stats = await fs.stat(outLog);
@@ -184,14 +182,11 @@ const fn = async (msg: Api.Message) => {
       } catch (error: any) {
         console.error("Error sending output log:", error);
         results.push(
-          `❌ 输出日志发送失败: ${
-            error.message?.substring(0, 50) || "未知错误"
-          }`
+          `❌ 输出日志发送失败: ${error.message?.substring(0, 50) || "未知错误"}`
         );
       }
     }
 
-    // 发送错误日志
     if (errLog) {
       try {
         const stats = await fs.stat(errLog);
@@ -211,9 +206,7 @@ const fn = async (msg: Api.Message) => {
       } catch (error: any) {
         console.error("Error sending error log:", error);
         results.push(
-          `❌ 错误日志发送失败: ${
-            error.message?.substring(0, 50) || "未知错误"
-          }`
+          `❌ 错误日志发送失败: ${error.message?.substring(0, 50) || "未知错误"}`
         );
       }
     }
@@ -234,16 +227,14 @@ const fn = async (msg: Api.Message) => {
         ? error.message.substring(0, 100) + "..."
         : error.message;
     await msg.edit({
-      text: `❌ 日志发送失败\n\n错误信息: ${
-        errorMsg || "未知错误"
-      }\n\n可能的解决方案:\n• 检查文件权限\n• 确认PM2进程状态\n• 重启telebox服务`,
+      text: `❌ 日志发送失败\n\n错误信息: ${errorMsg || "未知错误"}\n\n可能的解决方案:\n• 检查文件权限\n• 确认PM2进程状态\n• 重启telebox服务`,
     });
   }
 };
 
 class SendLogPlugin extends Plugin {
+  description: string = `<b>📋 日志管理插件</b>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📤 发送日志文件</b>\n<code>.sendlog</code>\n\n<b>🎯 设置发送目标</b>\n<code>.sendlog set &lt;目标&gt;</code>\n• <code>me</code> — 已保存消息 <i>(默认)</i>\n• <code>123456789</code> — 用户ID\n• <code>@username</code> — 用户名\n\n<b>🗑️ 清理日志文件</b>\n<code>.sendlog clean</code>\n\n<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n<b>📌 示例</b>\n<pre>.sendlog set me\n.sendlog clean\n.sendlog</pre>\n\n<i>⚠️ 日志文件超过 50MB 将自动跳过</i>`;
 
-  description: string = `发送日志文件到收藏夹或自定义目标\n.sendlog set &lt;对话 ID|@用户名|me&gt; 设置发送目标 (默认 me)\n.sendlog clean 清理日志文件`;
   cmdHandlers: Record<string, (msg: Api.Message) => Promise<void>> = {
     sendlog: fn,
     logs: fn,
