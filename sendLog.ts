@@ -52,12 +52,6 @@ async function findLogFiles(): Promise<{
 
 async function sendHelpMenu(msg: Api.Message) {
   const helpText = `
-<b>📋 日志管理插件</b>
-
-━━━━━━━━━━━━━━━━━━
-
-<b>📋 功能卡片</b>
-
 <b>┌ 📤 发送日志文件</b>
 <code>│ .sendlog</code>
 <code>│</code>
