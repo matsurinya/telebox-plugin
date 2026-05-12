@@ -418,39 +418,40 @@ async function sendSingleImage(
     });
 }
 
-async function sendMultipleImages(
+async function sendSingleImage(
     client: any,
     peerId: any,
-    images: DownloadedImage[],
+    image: DownloadedImage,
     replyTo?: number
 ): Promise<void> {
-    const multiMedia = [];
+    const fileStats = await fs.stat(image.filePath);
+    const fileBuffer = await fs.readFile(image.filePath);
 
-    for (const img of images) {
-        const fileStats = await fs.stat(img.filePath);
-        const fileBuffer = await fs.readFile(img.filePath);
+    const customFile = new CustomFile(
+        path.basename(image.filePath),
+        fileStats.size,
+        image.filePath,
+        fileBuffer
+    );
 
-        const customFile = new CustomFile(
-            path.basename(img.filePath),
-            fileStats.size,
-            img.filePath,
-            fileBuffer
-        );
+    const inputFile = await client.uploadFile({
+        file: customFile,
+        workers: 1
+    });
 
-        const inputFile = await client.uploadFile({
-            file: customFile,
-            workers: 1
-        });
-
-        const uploadResult = await client.invoke(
-            new Api.messages.UploadMedia({
-                peer: peerId,
-                media: new Api.InputMediaUploadedPhoto({
-                    file: inputFile,
-                    spoiler: img.hasSpoiler
-                })
-            })
-        );
+    await client.invoke(
+        new Api.messages.SendMedia({
+            peer: peerId,
+            media: new Api.InputMediaUploadedPhoto({
+                file: inputFile,
+                spoiler: image.hasSpoiler
+            }),
+            message: image.captionText,
+            entities: image.captionEntities,
+            replyTo
+        })
+    );
+}
 
         multiMedia.push(
             new Api.InputSingleMedia({
