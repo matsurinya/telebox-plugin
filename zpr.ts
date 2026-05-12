@@ -180,22 +180,22 @@ const helpText = `🎨 <b>随机纸片人插件</b>
 <b>可选参数：</b>
 • <code>[数量]</code> - 1-10张（默认1）
 • <code>[标签]</code> - 筛选标签，支持 <code>|</code> 分隔
-• <code>r18</code> - R18内容（自动遮罩）
-• <code>mask</code> - 手动添加遮罩
+• <code>r18</code> - R18内容
+• <code>mask</code> - 添加遮罩
 • <code>proxy</code> - 查看反代地址
 • <code>proxy [地址]</code> - 设置反代地址
 • <code>help</code> - 显示此帮助
 
 <b>示例：</b>
 • <code>${mainPrefix}zpr</code> - 随机1张
+• <code>${mainPrefix}zpr mask</code> - 随机1张带遮罩
 • <code>${mainPrefix}zpr 3 mask</code> - 3张带遮罩
 • <code>${mainPrefix}zpr 萝莉 2</code> - 萝莉标签2张
-• <code>${mainPrefix}zpr r18</code> - R18自动遮罩
 
 <b>反代地址：</b>
 <code>i.pixiv.cat</code> | <code>i.pixiv.re</code> | <code>i.pixiv.nl</code>
 
-<b>说明：</b>图片来源 Lolicon API | 默认反代 i.pixiv.cat`;
+<b>说明：</b>图片来源 Lolicon API | R18自动添加遮罩 | 默认反代 i.pixiv.cat`;
 
 // ==================== 消息编辑 ====================
 
@@ -409,21 +409,6 @@ async function sendSingleImage(
     image: DownloadedImage,
     replyTo?: number
 ): Promise<void> {
-    await client.sendFile(peerId, {
-        file: image.filePath,
-        caption: image.caption,
-        parseMode: "html",
-        replyTo,
-        spoiler: image.hasSpoiler
-    });
-}
-
-async function sendSingleImage(
-    client: any,
-    peerId: any,
-    image: DownloadedImage,
-    replyTo?: number
-): Promise<void> {
     const fileStats = await fs.stat(image.filePath);
     const fileBuffer = await fs.readFile(image.filePath);
 
@@ -452,6 +437,40 @@ async function sendSingleImage(
         })
     );
 }
+
+async function sendMultipleImages(
+    client: any,
+    peerId: any,
+    images: DownloadedImage[],
+    replyTo?: number
+): Promise<void> {
+    const multiMedia = [];
+
+    for (const img of images) {
+        const fileStats = await fs.stat(img.filePath);
+        const fileBuffer = await fs.readFile(img.filePath);
+
+        const customFile = new CustomFile(
+            path.basename(img.filePath),
+            fileStats.size,
+            img.filePath,
+            fileBuffer
+        );
+
+        const inputFile = await client.uploadFile({
+            file: customFile,
+            workers: 1
+        });
+
+        const uploadResult = await client.invoke(
+            new Api.messages.UploadMedia({
+                peer: peerId,
+                media: new Api.InputMediaUploadedPhoto({
+                    file: inputFile,
+                    spoiler: img.hasSpoiler
+                })
+            })
+        );
 
         multiMedia.push(
             new Api.InputSingleMedia({
