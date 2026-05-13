@@ -195,7 +195,7 @@ const helpText = `🎨 <b>随机纸片人插件 (Waifu)</b>
 <b>反代地址：</b>
 <code>i.pixiv.cat</code> | <code>i.pixiv.re</code> | <code>i.pixiv.nl</code>
 
-<b>说明：</b>图片来源 Lolicon API | R18自动添加遮罩 | 默认反代 i.pixiv.cat`;
+<b>说明：</b>图片来源 Lolicon API | 默认反代 i.pixiv.cat`;
 
 // ==================== 消息编辑 ====================
 
